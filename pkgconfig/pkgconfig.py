@@ -267,6 +267,25 @@ def parse(packages, static=False):
     return collections.defaultdict(list, ((k, v) for k, v in result.items() if v))
 
 
+def configure_extension(ext, packages, static=False):
+    """
+    Append the ``--cflags`` and ``--libs`` of a space-separated list of
+    *packages* to the ``extra_compile_args`` and ``extra_link_args`` of a
+    distutils/setuptools ``Extension``.
+    """
+    for package in packages.split():
+        _raise_if_not_exists(package)
+
+    os_opts = ['--msvc-syntax'] if os.name == 'nt' else []
+    cflags = _query(packages, *os_opts, *_build_options('--cflags', static=static))
+    libs = _query(packages, *os_opts, *_build_options('--libs', static=static))
+
+    ext.extra_compile_args.extend(
+        re.split(r'(?<!\\) ', cflags.replace('\\"', '')))
+    ext.extra_link_args.extend(
+        re.split(r'(?<!\\) ', libs.replace('\\"', '')))
+
+
 def list_all():
     """Return a list of all packages found by pkg-config."""
     packages = [line.split()[0] for line in _query('', '--list-all').split('\n')]
